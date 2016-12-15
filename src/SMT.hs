@@ -1,6 +1,8 @@
+{-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE OverloadedStrings #-}
 module SMT where
 
+import           Data.Data
 import           Data.List (foldl')
 import           Data.Map (Map)
 import qualified Data.Map as Map
@@ -8,29 +10,29 @@ import           Data.Text (Text)
 
 newtype VarName =
   VarName Text
-  deriving (Show, Eq, Ord)
+  deriving (Show, Eq, Ord, Data)
 
 newtype Sort =
   Sort Text
-  deriving (Show, Eq, Ord)
+  deriving (Show, Eq, Ord, Data)
 
 data Arg = Arg
   { argName :: !VarName
   , argSort :: !Sort
-  } deriving (Show, Eq, Ord)
+  } deriving (Show, Eq, Ord, Data)
 
 data DefineFun = DefineFun
   { funName :: !Text
   , arguments :: ![Arg]
   , returnSort :: !Sort
   , body :: !SExpr
-  } deriving (Show, Eq, Ord)
+  } deriving (Show, Eq, Ord, Data)
 
 data SExpr
   = IntLit !Integer
   | StringLit !Text
   | List ![SExpr]
-  deriving (Show, Eq, Ord)
+  deriving (Show, Eq, Ord, Data)
 
 insertBindings :: Map Text SExpr -> [SExpr] -> Map Text SExpr
 insertBindings m bindings = foldl' insertBinding m bindings
@@ -54,3 +56,8 @@ inlineLets' m (StringLit t) =
 inlineLets' m (List [StringLit "let", List bindings, expr]) =
   inlineLets' (insertBindings m bindings) expr
 inlineLets' m (List args) = List (map (inlineLets' m) args)
+
+simplify :: SExpr -> SExpr
+simplify (List [StringLit "*", List [StringLit "-", IntLit 1], expr]) =
+  List [StringLit "-", expr]
+simplify e = e

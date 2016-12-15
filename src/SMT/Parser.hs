@@ -2,6 +2,7 @@
 module SMT.Parser where
 
 import           Data.Char
+import           Data.Generics.Uniplate.Data
 import           Data.Text (Text)
 import qualified Data.Text as Text
 import           SMT
@@ -64,7 +65,7 @@ parseDefineFun = do
   expr <- parseSExpr
   space
   _ <- char ')'
-  pure (DefineFun name args retSort (inlineLets expr))
+  pure (DefineFun name args retSort (transform simplify $ inlineLets expr))
 
 parseDefineFuns :: Parser [DefineFun]
 parseDefineFuns = many (try parseDefineFun)
