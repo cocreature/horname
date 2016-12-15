@@ -1,9 +1,10 @@
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE LambdaCase #-}
 module SMT where
 
 import           Data.Data
-import           Data.List (foldl')
+import           Data.List (foldl', partition)
 import           Data.Map (Map)
 import qualified Data.Map as Map
 import           Data.Text (Text)
@@ -58,6 +59,21 @@ inlineLets' m (List [StringLit "let", List bindings, expr]) =
 inlineLets' m (List args) = List (map (inlineLets' m) args)
 
 simplify :: SExpr -> SExpr
+-- (* (- 1) x) → x
 simplify (List [StringLit "*", List [StringLit "-", IntLit 1], expr]) =
   List [StringLit "-", expr]
+-- merge nested ands
+simplify (List (StringLit "and":args)) =
+  List (StringLit "and" : (andArgs ++ others))
+  where
+    (ands, others) =
+      partition
+        (\case
+           List (StringLit "and":_) -> True
+           _ -> False)
+        args
+    andArgs = extractAndArgs =<< ands
+    extractAndArgs :: SExpr -> [SExpr]
+    extractAndArgs (List (StringLit "and":args')) = args'
+    extractAndArgs _ = []
 simplify e = e
