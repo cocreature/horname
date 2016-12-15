@@ -1,13 +1,18 @@
 {-# LANGUAGE OverloadedStrings #-}
 module Main where
 
+import           Data.Monoid
 import qualified Data.Text.IO as Text
 import           Options
 import           Options.Applicative hiding (Parser, runParser)
 import           SMT
 import           SMT.Parser
+import           SMT.Pretty
 import           Text.Megaparsec
-import           Text.Megaparsec.Text
+import           Text.PrettyPrint.Leijen.Text (Doc, putDoc, line)
+
+putDocLn :: Doc -> IO ()
+putDocLn d = putDoc (d <> line)
 
 main :: IO ()
 main = do
@@ -16,8 +21,8 @@ main = do
   let parseResult = runParser parseDefineFuns outp outContent
   case parseResult of
     Left err -> putStrLn (parseErrorPretty err)
-    Right res -> do
+    Right defineFuns -> do
       putStrLn "Successful parse\n"
-      print res
+      mapM_ (putDocLn . ppDefineFun) defineFuns
   where
     opts = info (helper <*> optsParser) (header "horname")

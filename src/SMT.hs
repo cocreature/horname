@@ -24,6 +24,6 @@ data DefineFun = DefineFun
 
 data SExpr
   = IntLit !Integer
-  | Var !VarName
+  | StringLit !Text
   | List ![SExpr]
   deriving (Show, Eq, Ord)

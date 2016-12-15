@@ -33,23 +33,23 @@ parseArgs = do
 someSpace :: Parser ()
 someSpace = skipSome spaceChar
 
-parseSMTExpr :: Parser SExpr
-parseSMTExpr = do
+parseSExpr :: Parser SExpr
+parseSExpr = do
   c <- char '(' <|> satisfy (not . isSpace)
   case c of
     '(' -> do
       space
-      args <- sepBy parseSMTExpr someSpace
+      args <- sepBy parseSExpr someSpace
       space
       _ <- char ')'
       pure (List args)
     alphaNum
       | isDigit alphaNum -> do
-          digits <- many digitChar
-          pure (IntLit (read (alphaNum : digits)))
+        digits <- many digitChar
+        pure (IntLit (read (alphaNum : digits)))
       | otherwise -> do
-          rest <- many (noneOf [' ', ')'])
-          pure . Var . VarName . Text.pack $ alphaNum : rest
+        rest <- many (noneOf [' ', ')'])
+        pure . StringLit . Text.pack $ alphaNum : rest
 
 parseDefineFun :: Parser DefineFun
 parseDefineFun = do
@@ -61,7 +61,7 @@ parseDefineFun = do
   someSpace
   retSort <- parseSort
   someSpace
-  expr <- parseSMTExpr
+  expr <- parseSExpr
   space
   _ <- char ')'
   pure (DefineFun name args retSort expr)

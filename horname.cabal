@@ -19,6 +19,7 @@ executable horname
   other-modules:       Options
                        SMT
                        SMT.Parser
+                       SMT.Pretty
   main-is:             Main.hs
   default-language:    Haskell2010
   build-depends:       base >= 4.9 && < 5
