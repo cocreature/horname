@@ -4,7 +4,7 @@
 module SMT where
 
 import           Data.Data
-import           Data.List (foldl', partition)
+import           Data.List (foldl')
 import           Data.Map (Map)
 import qualified Data.Map as Map
 import           Data.Text (Text)
@@ -58,6 +58,36 @@ inlineLets' m (List [StringLit "let", List bindings, expr]) =
   inlineLets' (insertBindings m bindings) expr
 inlineLets' m (List args) = List (map (inlineLets' m) args)
 
+comparisonOps :: [Text]
+comparisonOps = ["=", "<", "<=", ">", ">="]
+
+partitionPosNeg :: SExpr -> ([SExpr],[SExpr])
+partitionPosNeg (List (StringLit "+":args)) =
+  partition
+    (\case
+       (List [StringLit "-", e]) -> Right e
+       e -> Left e)
+    args
+partitionPosNeg e = ([e],[])
+
+partition               :: (a -> Either b c) -> [a] -> ([b],[c])
+partition p xs = foldr (select p) ([],[]) xs
+
+select :: (a -> Either b c) -> a -> ([b], [c]) -> ([b], [c])
+select p x (bs,cs) =
+  case p x of
+    Left b -> (b:bs,cs)
+    Right c -> (bs, c:cs)
+
+nonZero :: SExpr -> Bool
+nonZero (IntLit 0) = False
+nonZero _ = True
+
+sumExprs :: [SExpr] -> SExpr
+sumExprs [] = IntLit 0
+sumExprs [e] = e
+sumExprs args = List (StringLit "+" : args)
+
 simplify :: SExpr -> SExpr
 -- (* (- 1) x) → x
 simplify (List [StringLit "*", List [StringLit "-", IntLit 1], expr]) =
@@ -69,11 +99,17 @@ simplify (List (StringLit "and":args)) =
     (ands, others) =
       partition
         (\case
-           List (StringLit "and":_) -> True
-           _ -> False)
+           List (StringLit "and":args') -> Left args'
+           e -> Right e)
         args
-    andArgs = extractAndArgs =<< ands
-    extractAndArgs :: SExpr -> [SExpr]
-    extractAndArgs (List (StringLit "and":args')) = args'
-    extractAndArgs _ = []
+    andArgs = concat ands
+simplify (List [StringLit opName, arg1, arg2])
+  | opName `elem` comparisonOps =
+    case (partitionPosNeg arg1, partitionPosNeg arg2) of
+      ((posLeft, negLeft), (posRight, negRight)) ->
+        List
+          [ StringLit opName
+          , sumExprs . filter nonZero $ (posLeft ++ negRight)
+          , sumExprs . filter nonZero $ (posRight ++ negLeft)
+          ]
 simplify e = e
