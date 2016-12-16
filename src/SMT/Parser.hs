@@ -77,7 +77,9 @@ parseDeclareFun = do
   _ <- manyTill anyChar (string "; :annot (")
   name <- parseName
   someSpace
-  args <- sepBy parseName someSpace
+  args <-
+    map (Text.replace "_0" "") <$>
+    sepBy parseName someSpace
   space
   _ <- char ')'
   pure (name, args)
