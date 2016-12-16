@@ -4,9 +4,10 @@
 module SMT where
 
 import           Data.Data
-import           Data.List (foldl')
+import           Data.List (foldl', find)
 import           Data.Map (Map)
 import qualified Data.Map as Map
+import           Data.Maybe
 import           Data.Text (Text)
 
 newtype VarName =
@@ -34,6 +35,23 @@ data SExpr
   | StringLit !Text
   | List ![SExpr]
   deriving (Show, Eq, Ord, Data)
+
+renameDefineFun :: [Text] -> DefineFun -> DefineFun
+renameDefineFun newNames (DefineFun n args retSort expr) =
+  DefineFun n renamedArgs retSort (renameInBody varMap expr)
+  where
+    renamedArgs =
+      zipWith (\(Arg _ sort) name -> Arg (VarName name) sort) args newNames
+    varMap :: Map Text Text
+    varMap =
+      Map.fromList $ zip (map (\(Arg (VarName name) _) -> name) args) newNames
+    renameInBody :: Map Text Text -> SExpr -> SExpr
+    renameInBody m (StringLit s) =
+      case Map.lookup s m of
+        Just s' -> StringLit s'
+        Nothing -> StringLit s
+    renameInBody _ (IntLit i) = IntLit i
+    renameInBody m (List exprs) = List (map (renameInBody m) exprs)
 
 insertBindings :: Map Text SExpr -> [SExpr] -> Map Text SExpr
 insertBindings m bindings = foldl' insertBinding m bindings
@@ -122,3 +140,10 @@ simplify (List (StringLit "+":args)) =
       [arg1, List [StringLit "-", arg2]]
     sepSubtraction e = [e]
 simplify e = e
+
+extractDefinitions :: Map Text [Text] -> [DefineFun] -> [DefineFun]
+extractDefinitions decls defs =
+  mapMaybe
+    (\(name, argNames) ->
+       renameDefineFun argNames <$> find ((== name) . funName) defs)
+    (Map.toList decls)

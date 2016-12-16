@@ -18,11 +18,13 @@ main :: IO ()
 main = do
   Opts outp inp <- execParser opts
   outContent <- Text.readFile outp
-  let parseResult = runParser parseDefineFuns outp outContent
-  case parseResult of
-    Left err -> putStrLn (parseErrorPretty err)
-    Right defineFuns -> do
-      putStrLn "Successful parse\n"
-      mapM_ (putDocLn . ppDefineFun) defineFuns
+  inContent <- Text.readFile inp
+  let outpResult = runParser parseDefineFuns outp outContent
+      inpResult = runParser parseDeclareFuns inp inContent
+  case (outpResult, inpResult) of
+    (Left err, _) -> putStrLn (parseErrorPretty err)
+    (_, Left err) -> putStrLn (parseErrorPretty err)
+    (Right defineFuns, Right declareFuns) -> do
+      mapM_ (putDocLn . ppDefineFun) (extractDefinitions declareFuns defineFuns)
   where
     opts = info (helper <*> optsParser) (header "horname")

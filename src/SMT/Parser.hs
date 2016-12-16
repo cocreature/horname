@@ -3,6 +3,8 @@ module SMT.Parser where
 
 import           Data.Char
 import           Data.Generics.Uniplate.Data
+import           Data.Map.Strict (Map)
+import qualified Data.Map.Strict as Map
 import           Data.Text (Text)
 import qualified Data.Text as Text
 import           SMT
@@ -69,3 +71,16 @@ parseDefineFun = do
 
 parseDefineFuns :: Parser [DefineFun]
 parseDefineFuns = many (try parseDefineFun)
+
+parseDeclareFun :: Parser (Text, [Text])
+parseDeclareFun = do
+  _ <- manyTill anyChar (string "; :annot (")
+  name <- parseName
+  someSpace
+  args <- sepBy parseName someSpace
+  space
+  _ <- char ')'
+  pure (name, args)
+
+parseDeclareFuns :: Parser (Map Text [Text])
+parseDeclareFuns = Map.fromList <$> many (try parseDeclareFun)
