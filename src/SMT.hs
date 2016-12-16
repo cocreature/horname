@@ -103,6 +103,7 @@ simplify (List (StringLit "and":args)) =
            e -> Right e)
         args
     andArgs = concat ands
+-- Move negative and positive arguments to the same side of a comparison
 simplify (List [StringLit opName, arg1, arg2])
   | opName `elem` comparisonOps =
     case (partitionPosNeg arg1, partitionPosNeg arg2) of
@@ -112,4 +113,12 @@ simplify (List [StringLit opName, arg1, arg2])
           , sumExprs . filter nonZero $ (posLeft ++ negRight)
           , sumExprs . filter nonZero $ (posRight ++ negLeft)
           ]
+-- Transform (+ a (- b c)) to (+ a b (- c))
+simplify (List (StringLit "+":args)) =
+  List (StringLit "+" : (sepSubtraction =<< args))
+  where
+    sepSubtraction :: SExpr -> [SExpr]
+    sepSubtraction (List [StringLit "-", arg1, arg2]) =
+      [arg1, List [StringLit "-", arg2]]
+    sepSubtraction e = [e]
 simplify e = e
