@@ -1,9 +1,9 @@
 {-# LANGUAGE OverloadedStrings #-}
-module SMT.Pretty where
+module Horname.Internal.SMT.Pretty where
 
-import Data.Text (Text)
+import           Data.Text (Text)
 import qualified Data.Text.Lazy as Text
-import           SMT
+import           Horname.Internal.SMT
 import           Text.PrettyPrint.Leijen.Text
 
 dontIndent :: [Text]

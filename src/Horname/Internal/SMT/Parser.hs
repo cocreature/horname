@@ -1,5 +1,5 @@
 {-# LANGUAGE OverloadedStrings #-}
-module SMT.Parser where
+module Horname.Internal.SMT.Parser where
 
 import           Data.Char
 import           Data.Generics.Uniplate.Data
@@ -7,7 +7,7 @@ import           Data.Map.Strict (Map)
 import qualified Data.Map.Strict as Map
 import           Data.Text (Text)
 import qualified Data.Text as Text
-import           SMT
+import           Horname.Internal.SMT
 import           Text.Megaparsec
 import           Text.Megaparsec.Text
 

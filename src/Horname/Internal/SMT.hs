@@ -1,7 +1,7 @@
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE LambdaCase #-}
-module SMT where
+module Horname.Internal.SMT where
 
 import           Data.Data
 import           Data.List (foldl', find)
