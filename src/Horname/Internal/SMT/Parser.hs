@@ -78,7 +78,12 @@ parseDefineFun = do
   expr <- parseSExpr
   space
   _ <- char ')'
-  pure (DefineFun name args retSort (transform simplify $ inlineLets expr))
+  pure
+    (DefineFun
+       name
+       args
+       retSort
+       (transform simplify' . transform simplify $ inlineLets expr))
 
 parseDefineFuns :: Parser [DefineFun]
 parseDefineFuns = many (try parseDefineFun)

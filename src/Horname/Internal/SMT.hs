@@ -5,6 +5,7 @@ module Horname.Internal.SMT where
 
 import           Data.Data
 import           Data.List (foldl', find)
+import qualified Data.List as List
 import           Data.Map (Map)
 import qualified Data.Map as Map
 import           Data.Maybe
@@ -106,6 +107,7 @@ sumExprs [] = IntLit 0
 sumExprs [e] = e
 sumExprs args = List (StringLit "+" : args)
 
+-- first pass of simplifications
 simplify :: SExpr -> SExpr
 -- (* (- 1) x) → x
 simplify (List [StringLit "*", List [StringLit "-", IntLit i], expr]) =
@@ -147,6 +149,32 @@ simplify (List (StringLit "+":args)) =
 simplify (List [StringLit "not", List (StringLit "or":args)]) =
   List (StringLit "and" : map negateExpr args)
 simplify e = e
+
+antiSymmetricOp :: Text -> Bool
+antiSymmetricOp n = n `elem` ["<=",">="]
+-- second pass of simplifications
+simplify' :: SExpr -> SExpr
+-- transform two inequalities to an equality
+simplify' (List (StringLit "and":args)) =
+  List (StringLit "and" : other ++ mergeInequalities inequality)
+  where
+    (inequality, other) =
+      List.partition
+        (\case
+           List [StringLit op, _, _] -> antiSymmetricOp op
+           _ -> False)
+        args
+    mergeInequalities :: [SExpr] -> [SExpr]
+    mergeInequalities [] = []
+    mergeInequalities (e@(List [StringLit op, expr1, expr2]):rest) =
+      let reversedE = List [StringLit op, expr2, expr1]
+      in if reversedE `elem` rest
+           then List [StringLit "=", expr1, expr2] :
+                mergeInequalities (filter (not . (`elem` [e, reversedE])) rest)
+           else e : mergeInequalities rest
+    mergeInequalities (e:es) = e : mergeInequalities es
+simplify' e = e
+
 
 negateExpr :: SExpr -> SExpr
 negateExpr (List [StringLit "not", expr]) = expr
