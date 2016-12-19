@@ -5,6 +5,7 @@ import           Data.Char
 import           Data.Generics.Uniplate.Data
 import           Data.Map.Strict (Map)
 import qualified Data.Map.Strict as Map
+import           Data.Monoid
 import           Data.Text (Text)
 import qualified Data.Text as Text
 import           Horname.Internal.SMT
@@ -15,7 +16,17 @@ parseName :: Parser Text
 parseName = Text.pack <$> some (noneOf [' ', '\n', ')'])
 
 parseSort :: Parser Sort
-parseSort = Sort . Text.pack <$> some (noneOf [' ', '\n', ')'])
+parseSort = do
+  c <- noneOf [' ', '\n', ')']
+  case c of
+    '(' -> do
+      space
+      args <- map (\(Sort t) -> t) <$> sepBy parseSort someSpace
+      _ <- char ')'
+      pure $ Sort ("(" <> Text.intercalate " " args <> ")")
+    c' -> do
+      rest <- many (noneOf [' ', '\n', ')'])
+      pure (Sort (Text.pack (c' : rest)))
 
 parseArg :: Parser Arg
 parseArg = do
