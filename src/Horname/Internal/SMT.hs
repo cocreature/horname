@@ -108,8 +108,12 @@ sumExprs args = List (StringLit "+" : args)
 
 simplify :: SExpr -> SExpr
 -- (* (- 1) x) → x
-simplify (List [StringLit "*", List [StringLit "-", IntLit 1], expr]) =
-  List [StringLit "-", expr]
+simplify (List [StringLit "*", List [StringLit "-", IntLit i], expr]) =
+  let expr' =
+        if i == 1
+          then expr
+          else List [StringLit "*", IntLit i, expr]
+  in List [StringLit "-", expr']
 -- merge nested ands
 simplify (List (StringLit "and":args)) =
   List (StringLit "and" : (andArgs ++ others))
