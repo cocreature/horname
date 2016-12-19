@@ -143,7 +143,14 @@ simplify (List (StringLit "+":args)) =
     sepSubtraction (List [StringLit "-", arg1, arg2]) =
       [arg1, List [StringLit "-", arg2]]
     sepSubtraction e = [e]
+-- transform (not (or (not …))) to (and …)
+simplify (List [StringLit "not", List (StringLit "or":args)]) =
+  List (StringLit "and" : map negateExpr args)
 simplify e = e
+
+negateExpr :: SExpr -> SExpr
+negateExpr (List [StringLit "not", expr]) = expr
+negateExpr expr = List [StringLit "not", expr]
 
 extractDefinitions :: Map Text [Text] -> [DefineFun] -> [DefineFun]
 extractDefinitions decls defs =
