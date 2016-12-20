@@ -87,7 +87,8 @@ partitionPosNeg (List (StringLit "+":args)) =
        (List [StringLit "-", e]) -> Right e
        e -> Left e)
     args
-partitionPosNeg e = ([e],[])
+partitionPosNeg (List [StringLit "-", e]) = ([], [e])
+partitionPosNeg e = ([e], [])
 
 partition               :: (a -> Either b c) -> [a] -> ([b],[c])
 partition p xs = foldr (select p) ([],[]) xs
