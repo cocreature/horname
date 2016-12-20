@@ -1,6 +1,7 @@
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE PatternSynonyms #-}
 module Horname.Internal.SMT where
 
 import           Data.Data
@@ -87,7 +88,7 @@ partitionPosNeg (List (StringLit "+":args)) =
        (List [StringLit "-", e]) -> Right e
        e -> Left e)
     args
-partitionPosNeg (List [StringLit "-", e]) = ([], [e])
+partitionPosNeg (Neg e) = ([], [e])
 partitionPosNeg e = ([e], [])
 
 partition               :: (a -> Either b c) -> [a] -> ([b],[c])
@@ -108,53 +109,60 @@ sumExprs [] = IntLit 0
 sumExprs [e] = e
 sumExprs args = List (StringLit "+" : args)
 
+pattern And :: [SExpr] -> SExpr
+pattern And args = List (StringLit "and" : args)
+
+pattern Neg :: SExpr -> SExpr
+pattern Neg arg = List [StringLit "-", arg]
+
+pattern Or :: [SExpr] -> SExpr
+pattern Or args = List (StringLit "or" : args)
+
+pattern BinOp :: Text -> SExpr -> SExpr -> SExpr
+pattern BinOp name op1 op2 = List [StringLit name, op1, op2]
+
 -- first pass of simplifications
 simplify :: SExpr -> SExpr
 -- (* (- 1) x) → x
-simplify (List [StringLit "*", List [StringLit "-", IntLit i], expr]) =
+simplify (BinOp "*" (Neg (IntLit i)) expr) =
   let expr' =
         if i == 1
           then expr
-          else List [StringLit "*", IntLit i, expr]
-  in List [StringLit "-", expr']
+          else BinOp "*" (IntLit i) expr
+  in Neg expr'
 -- merge nested ands
-simplify (List (StringLit "and":args)) =
-  List (StringLit "and" : (andArgs ++ others))
+simplify (And args) = And (andArgs ++ others)
   where
     (ands, others) =
       partition
         (\case
-           List (StringLit "and":args') -> Left args'
+           And args' -> Left args'
            e -> Right e)
         args
     andArgs = concat ands
--- pull out parts contained in all ands in an or
-simplify (List (StringLit "or":arg:args)) =
+-- pull out common subexpressions of disjunctions
+simplify (Or (arg:args)) =
   if null commonSubExprs
-    then List (StringLit "or" : arg : args)
-    else List
-           (StringLit "and" :
-            commonSubExprs ++
-            [ List
-                (StringLit "or" :
-                 map (removeSubExprs commonSubExprs) (arg : args))
-            ])
+    then Or (arg : args)
+    else And
+           (commonSubExprs ++
+            [Or (map (removeSubExprs commonSubExprs) (arg : args))])
   where
     commonSubExprs =
       filter
         (\arg' -> all (arg' `subsumedBy`) args)
         (case arg of
-           List (StringLit "and":exprs) -> exprs
+           And exprs -> exprs
            _ -> [])
     subsumedBy :: SExpr -> SExpr -> Bool
-    subsumedBy e (List (StringLit "and":args')) = e `elem` args'
+    subsumedBy e (And args') = e `elem` args'
     subsumedBy _ _ = False
     removeSubExprs :: [SExpr] -> SExpr -> SExpr
-    removeSubExprs subExprs (List (StringLit "and":exprs)) =
-      List (StringLit "and" : filter (\e -> not (e `elem` subExprs)) exprs)
+    removeSubExprs subExprs (And exprs) =
+      And (filter (\e -> not (e `elem` subExprs)) exprs)
     removeSubExprs _ e = e
 -- Move negative and positive arguments to the same side of a comparison
-simplify (List [StringLit opName, arg1, arg2])
+simplify (BinOp opName arg1 arg2)
   | opName `elem` comparisonOps =
     case (partitionPosNeg arg1, partitionPosNeg arg2) of
       ((posLeft, negLeft), (posRight, negRight)) ->
@@ -168,12 +176,10 @@ simplify (List (StringLit "+":args)) =
   List (StringLit "+" : (sepSubtraction =<< args))
   where
     sepSubtraction :: SExpr -> [SExpr]
-    sepSubtraction (List [StringLit "-", arg1, arg2]) =
-      [arg1, List [StringLit "-", arg2]]
+    sepSubtraction (BinOp "-" arg1 arg2) = [arg1, Neg arg2]
     sepSubtraction e = [e]
 -- transform (not (or (not …))) to (and …)
-simplify (List [StringLit "not", List (StringLit "or":args)]) =
-  List (StringLit "and" : map negateExpr args)
+simplify (List [StringLit "not", Or args]) = And (map negateExpr args)
 simplify e = e
 
 antiSymmetricOp :: Text -> Bool
@@ -181,8 +187,7 @@ antiSymmetricOp n = n `elem` ["<=",">="]
 -- second pass of simplifications
 simplify' :: SExpr -> SExpr
 -- transform two inequalities to an equality
-simplify' (List (StringLit "and":args)) =
-  List (StringLit "and" : other ++ mergeInequalities inequality)
+simplify' (And args) = And (other ++ mergeInequalities inequality)
   where
     (inequality, other) =
       List.partition
@@ -195,7 +200,7 @@ simplify' (List (StringLit "and":args)) =
     mergeInequalities (e@(List [StringLit op, expr1, expr2]):rest) =
       let reversedE = List [StringLit op, expr2, expr1]
       in if reversedE `elem` rest
-           then List [StringLit "=", expr1, expr2] :
+           then BinOp "=" expr1 expr2 :
                 mergeInequalities (filter (not . (`elem` [e, reversedE])) rest)
            else e : mergeInequalities rest
     mergeInequalities (e:es) = e : mergeInequalities es
