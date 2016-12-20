@@ -62,7 +62,7 @@ parseSExpr = do
         digits <- many digitChar
         pure (IntLit (read (alphaNum : digits)))
       | otherwise -> do
-        rest <- many (noneOf [' ', ')'])
+        rest <- many (noneOf [' ', '\t', '\n', ')'])
         pure . StringLit . Text.pack $ alphaNum : rest
 
 parseDefineFun :: Parser DefineFun

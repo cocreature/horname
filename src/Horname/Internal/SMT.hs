@@ -61,9 +61,9 @@ insertBinding :: Map Text SExpr -> Map Text SExpr -> SExpr -> Map Text SExpr
 insertBinding oldMap m (List [StringLit key, val]) = Map.insert key (inlineLets' oldMap val) m
 insertBinding _ _ _ = error "Syntax error in let bindings"
 
--- | This is not correct in the presence of nested lets but these
--- should never occur in the Z3 output and Eldarica doesn’t include
--- any lets.
+-- | This is not correct in the case of quantifiers but ignoring this
+-- simplifies the implementation and seems to be enough for z3 and
+-- eldarica
 inlineLets :: SExpr -> SExpr
 inlineLets = inlineLets' Map.empty
 
