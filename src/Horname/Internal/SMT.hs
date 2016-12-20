@@ -128,6 +128,31 @@ simplify (List (StringLit "and":args)) =
            e -> Right e)
         args
     andArgs = concat ands
+-- pull out parts contained in all ands in an or
+simplify (List (StringLit "or":arg:args)) =
+  if null commonSubExprs
+    then List (StringLit "or" : arg : args)
+    else List
+           (StringLit "and" :
+            commonSubExprs ++
+            [ List
+                (StringLit "or" :
+                 map (removeSubExprs commonSubExprs) (arg : args))
+            ])
+  where
+    commonSubExprs =
+      filter
+        (\arg' -> all (arg' `subsumedBy`) args)
+        (case arg of
+           List (StringLit "and":exprs) -> exprs
+           _ -> [])
+    subsumedBy :: SExpr -> SExpr -> Bool
+    subsumedBy e (List (StringLit "and":args')) = e `elem` args'
+    subsumedBy _ _ = False
+    removeSubExprs :: [SExpr] -> SExpr -> SExpr
+    removeSubExprs subExprs (List (StringLit "and":exprs)) =
+      List (StringLit "and" : filter (\e -> not (e `elem` subExprs)) exprs)
+    removeSubExprs _ e = e
 -- Move negative and positive arguments to the same side of a comparison
 simplify (List [StringLit opName, arg1, arg2])
   | opName `elem` comparisonOps =
