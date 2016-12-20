@@ -55,11 +55,11 @@ renameDefineFun newNames (DefineFun n args retSort expr) =
     renameInBody m (List exprs) = List (map (renameInBody m) exprs)
 
 insertBindings :: Map Text SExpr -> [SExpr] -> Map Text SExpr
-insertBindings m bindings = foldl' insertBinding m bindings
+insertBindings m bindings = foldl' (insertBinding m) m bindings
 
-insertBinding :: Map Text SExpr -> SExpr -> Map Text SExpr
-insertBinding m (List [StringLit key, val]) = Map.insert key val m
-insertBinding _ _ = error "Syntax error in let bindings"
+insertBinding :: Map Text SExpr -> Map Text SExpr -> SExpr -> Map Text SExpr
+insertBinding oldMap m (List [StringLit key, val]) = Map.insert key (inlineLets' oldMap val) m
+insertBinding _ _ _ = error "Syntax error in let bindings"
 
 -- | This is not correct in the presence of nested lets but these
 -- should never occur in the Z3 output and Eldarica doesn’t include
