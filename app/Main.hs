@@ -4,7 +4,7 @@ module Main where
 import qualified Data.Text.IO as Text
 import           Horname
 import           Options
-import           Options.Applicative hiding (Parser, runParser)
+import           Options.Applicative hiding (Parser)
 
 main :: IO ()
 main = do

@@ -28,9 +28,9 @@ extractRenamedInvariants inpFile inp outpFile outp =
       inpResult = runParser parseDeclareFuns inpFile inp
   in case (outpResult, inpResult) of
        (Left err, Left err') ->
-         Left (These (parseErrorPretty err) (parseErrorPretty err'))
-       (Left err, _) -> Left (This (parseErrorPretty err))
-       (_, Left err) -> Left (That (parseErrorPretty err))
+         Left (These (errorBundlePretty err) (errorBundlePretty err'))
+       (Left err, _) -> Left (This (errorBundlePretty err))
+       (_, Left err) -> Left (That (errorBundlePretty err))
        (Right defineFuns, Right declareFuns) ->
          Right (extractDefinitions declareFuns defineFuns)
 

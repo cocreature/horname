@@ -5,12 +5,14 @@ import           Data.Char
 import           Data.Generics.Uniplate.Data
 import           Data.Map.Strict (Map)
 import qualified Data.Map.Strict as Map
-import           Data.Monoid
 import           Data.Text (Text)
 import qualified Data.Text as Text
+import Data.Void
 import           Horname.Internal.SMT
 import           Text.Megaparsec
-import           Text.Megaparsec.Text
+import           Text.Megaparsec.Char
+
+type Parser = Parsec Void Text
 
 parseName :: Parser Text
 parseName = Text.pack <$> some (noneOf [' ', '\n', ')'])
@@ -67,7 +69,7 @@ parseSExpr = do
 
 parseDefineFun :: Parser DefineFun
 parseDefineFun = do
-  _ <- manyTill anyChar (string "(define-fun")
+  _ <- manyTill anySingle (string "(define-fun")
   someSpace
   name <- parseName
   someSpace
@@ -90,7 +92,7 @@ parseDefineFuns = many (try parseDefineFun)
 
 parseDeclareFun :: Parser (Text, [Text])
 parseDeclareFun = do
-  _ <- manyTill anyChar (string "; :annot (")
+  _ <- manyTill anySingle (string "; :annot (")
   name <- parseName
   someSpace
   args <-

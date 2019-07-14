@@ -3,7 +3,6 @@ module Options
   , optsParser
   ) where
 
-import Data.Monoid
 import Options.Applicative
 
 data Opts = Opts
